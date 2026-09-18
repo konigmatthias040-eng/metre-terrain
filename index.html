@@ -1,0 +1,795 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Métré Terrain</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700;800&display=swap">
+<style>
+  :root{
+    --bg:#F5F2EC; --surface:#FFFFFF; --surface-2:#EFE9DF; --surface-3:#E7E0D2;
+    --ink:#211E18; --ink-2:#6B6459; --line:#DAD3C6;
+    --accent:#2F6B4F; --accent-ink:#FFFFFF; --accent-soft:#E4EFE8;
+    --point:#E07A3E; --point-ink:#5A2C10;
+    --danger:#C0483B; --good:#2F6B4F;
+    --shadow:0 1px 2px rgba(33,30,24,.06),0 6px 20px rgba(33,30,24,.08);
+    --r:14px;
+  }
+  :root:not([data-theme="light"]){}
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#17140F; --surface:#221F18; --surface-2:#2B2720; --surface-3:#332E25;
+      --ink:#ECE6DA; --ink-2:#A69E8E; --line:#3A362D;
+      --accent:#5BB98A; --accent-ink:#0E1A13; --accent-soft:#20302700;
+      --point:#F08A4B; --point-ink:#2A1408;
+      --danger:#E06A5C; --good:#5BB98A;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#17140F; --surface:#221F18; --surface-2:#2B2720; --surface-3:#332E25;
+    --ink:#ECE6DA; --ink-2:#A69E8E; --line:#3A362D;
+    --accent:#5BB98A; --accent-ink:#0E1A13; --accent-soft:#203027;
+    --point:#F08A4B; --point-ink:#2A1408;
+    --danger:#E06A5C; --good:#5BB98A;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:"Barlow",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    font-size:15px; line-height:1.45; -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:680px; margin:0 auto; padding:14px 16px 40px; display:flex; flex-direction:column; gap:14px}
+
+  header.app{display:flex; align-items:center; gap:12px}
+  .logo{
+    width:38px;height:38px;border-radius:10px;flex:0 0 auto;
+    background:var(--accent); color:var(--accent-ink);
+    display:grid;place-items:center;box-shadow:var(--shadow);
+  }
+  .logo svg{width:22px;height:22px}
+  .title h1{
+    font-family:"Barlow Semi Condensed",sans-serif; font-weight:800;
+    font-size:23px; letter-spacing:.2px; margin:0; line-height:1;
+  }
+  .title p{margin:2px 0 0; color:var(--ink-2); font-size:12.5px; letter-spacing:.3px}
+  .theme-btn{margin-left:auto;background:var(--surface);border:1px solid var(--line);color:var(--ink-2);
+    width:36px;height:36px;border-radius:9px;cursor:pointer;display:grid;place-items:center}
+  .theme-btn:active{transform:scale(.96)}
+
+  /* stepper */
+  .steps{display:flex; gap:6px}
+  .step{
+    flex:1; text-align:center; padding:7px 4px; border-radius:10px;
+    background:var(--surface-2); color:var(--ink-2); border:1px solid transparent;
+    font-family:"Barlow Semi Condensed",sans-serif; font-weight:700; font-size:12px;
+    letter-spacing:.3px; cursor:pointer; user-select:none;
+    display:flex;flex-direction:column;gap:2px;align-items:center;
+  }
+  .step .n{
+    width:19px;height:19px;border-radius:50%;display:grid;place-items:center;
+    background:var(--surface-3); color:var(--ink-2); font-size:11px;
+  }
+  .step.on{background:var(--accent); color:var(--accent-ink); box-shadow:var(--shadow)}
+  .step.on .n{background:rgba(255,255,255,.25); color:var(--accent-ink)}
+  .step.done .n{background:var(--good); color:#fff}
+  .step.done{color:var(--ink)}
+
+  /* stage */
+  .stage{
+    position:relative; background:var(--surface-3); border:1px solid var(--line);
+    border-radius:var(--r); overflow:hidden; box-shadow:var(--shadow);
+    height:clamp(300px,54vh,580px);
+    touch-action:none;
+  }
+  canvas#c{display:block;width:100%;height:100%;touch-action:none}
+  .stage.empty canvas#c{display:none}
+  .stage:not(.empty) .placeholder,.stage:not(.empty) .ph-badge{display:none!important}
+  .placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:18px;text-align:center}
+  .placeholder svg{width:min(78%,320px);height:auto}
+  .placeholder .ph-txt{color:var(--ink-2);font-size:13px;max-width:34ch}
+  .ph-badge{position:absolute;top:10px;left:10px;background:var(--surface);border:1px solid var(--line);
+    color:var(--ink-2);font-size:11px;font-weight:600;letter-spacing:.4px;padding:3px 9px;border-radius:999px}
+
+  .stage-tools{position:absolute;top:10px;right:10px;display:flex;gap:6px}
+  .stage.empty .stage-tools{display:none}
+  .tbtn{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);
+    background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:blur(4px);
+    color:var(--ink);display:grid;place-items:center;cursor:pointer;font-size:15px}
+  .tbtn:active{transform:scale(.94)}
+  .tbtn svg{width:17px;height:17px}
+  .zoomtag{position:absolute;bottom:10px;right:10px;background:color-mix(in srgb,var(--surface) 88%,transparent);
+    border:1px solid var(--line);color:var(--ink-2);font-size:11px;padding:3px 8px;border-radius:999px;
+    font-variant-numeric:tabular-nums}
+  .stage.empty .zoomtag{display:none}
+  .hint{position:absolute;bottom:10px;left:10px;right:56px;background:color-mix(in srgb,var(--ink) 84%,transparent);
+    color:var(--bg);font-size:12px;font-weight:500;padding:6px 11px;border-radius:10px;line-height:1.3;pointer-events:none}
+  .stage.empty .hint{display:none}
+  /* loupe */
+  #loupe{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:120px;height:120px;border-radius:50%;
+    border:3px solid var(--surface);box-shadow:var(--shadow);display:none;overflow:hidden;background:var(--surface-3);pointer-events:none;z-index:5}
+  #loupe.on{display:block}
+  #loupe canvas{width:100%;height:100%;display:block}
+
+  /* panel */
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);
+    padding:15px;display:flex;flex-direction:column;gap:13px}
+  .panel h2{font-family:"Barlow Semi Condensed",sans-serif;font-weight:700;font-size:15px;margin:0;
+    display:flex;align-items:center;gap:8px;letter-spacing:.2px}
+  .panel h2 .tag{margin-left:auto;font-size:11px;color:var(--ink-2);font-weight:600}
+  .lead{color:var(--ink-2);font-size:13px;margin:0}
+
+  .btn{appearance:none;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);
+    font-family:"Barlow",sans-serif;font-weight:600;font-size:14px;padding:11px 14px;border-radius:11px;cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;line-height:1}
+  .btn:active{transform:scale(.985)}
+  .btn svg{width:17px;height:17px}
+  .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+  .btn.point{background:var(--point);color:#fff;border-color:transparent}
+  .btn.ghost{background:transparent}
+  .btn.danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 40%,var(--line))}
+  .btn.wide{width:100%}
+  .btn.sm{padding:8px 11px;font-size:13px}
+  .row{display:flex;gap:9px;flex-wrap:wrap}
+  .row.grow>*{flex:1 1 0;min-width:0}
+
+  .seg{display:flex;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:3px;gap:3px}
+  .seg button{flex:1;border:none;background:transparent;color:var(--ink-2);font-family:"Barlow Semi Condensed",sans-serif;
+    font-weight:700;font-size:12.5px;letter-spacing:.2px;padding:8px 6px;border-radius:8px;cursor:pointer}
+  .seg button.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+
+  .field{display:flex;flex-direction:column;gap:5px}
+  .field label{font-size:11.5px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-2)}
+  .field .inrow{display:flex;gap:6px}
+  input[type="number"],select,input[type="text"]{
+    width:100%;background:var(--surface-2);border:1px solid var(--line);color:var(--ink);
+    font-family:"Barlow",sans-serif;font-size:16px;padding:10px 11px;border-radius:10px;
+    font-variant-numeric:tabular-nums}
+  select{cursor:pointer}
+  input:focus-visible,select:focus-visible,.btn:focus-visible,.step:focus-visible{
+    outline:2.5px solid var(--accent);outline-offset:1px}
+  .unit-pick{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;flex:0 0 auto}
+  .unit-pick button{border:none;background:var(--surface-2);color:var(--ink-2);font-weight:700;font-size:13px;padding:0 13px;cursor:pointer}
+  .unit-pick button.on{background:var(--accent);color:var(--accent-ink)}
+
+  /* results */
+  .tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+  .tile{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:11px 13px;display:flex;flex-direction:column;gap:2px}
+  .tile.hero{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 30%,var(--line))}
+  .tile .k{font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-2)}
+  .tile .v{font-family:"Barlow Semi Condensed",sans-serif;font-weight:800;font-size:29px;line-height:1;
+    font-variant-numeric:tabular-nums;color:var(--ink)}
+  .tile.hero .v{color:var(--accent)}
+  .tile .u{font-size:12px;color:var(--ink-2);font-weight:600}
+
+  .shapes{display:flex;flex-direction:column;gap:0}
+  .shape-row{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--line)}
+  .shape-row:last-child{border-bottom:none}
+  .shape-row .dot{width:10px;height:10px;border-radius:3px;background:var(--point);flex:0 0 auto}
+  .shape-row .nm{font-weight:600;font-size:13.5px}
+  .shape-row .mt{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--ink-2);font-size:12.5px;text-align:right}
+  .shape-row .mt b{color:var(--ink);font-weight:700}
+  .shape-row .x{background:none;border:none;color:var(--ink-2);cursor:pointer;font-size:16px;padding:2px 4px;line-height:1}
+  .totals{display:flex;gap:10px;padding-top:11px;margin-top:3px;border-top:2px solid var(--line);
+    font-family:"Barlow Semi Condensed",sans-serif;font-weight:700}
+  .totals .t{flex:1;display:flex;flex-direction:column;gap:1px}
+  .totals .t span{font-size:11px;color:var(--ink-2);font-weight:600;font-family:"Barlow",sans-serif;letter-spacing:.4px;text-transform:uppercase}
+  .totals .t b{font-size:19px;font-variant-numeric:tabular-nums}
+
+  details.help{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:2px 15px}
+  details.help summary{cursor:pointer;font-family:"Barlow Semi Condensed",sans-serif;font-weight:700;font-size:14px;
+    padding:12px 0;list-style:none;display:flex;align-items:center;gap:8px}
+  details.help summary::-webkit-details-marker{display:none}
+  details.help summary .chev{margin-left:auto;transition:transform .2s}
+  details.help[open] summary .chev{transform:rotate(90deg)}
+  .help-body{padding:0 0 14px;color:var(--ink-2);font-size:13.5px;display:flex;flex-direction:column;gap:9px}
+  .help-body ol{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+  .help-body b{color:var(--ink)}
+  .warn{background:color-mix(in srgb,var(--point) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--point) 35%,var(--line));
+    border-radius:10px;padding:9px 11px;color:var(--ink);font-size:12.5px}
+  .foot{color:var(--ink-2);font-size:11.5px;text-align:center;line-height:1.5}
+  .hidden{display:none!important}
+  @media (max-width:400px){ .tile .v{font-size:26px} .title h1{font-size:21px} }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="app">
+    <div class="logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 17l6-6 4 4 8-8"/><path d="M3 21h18"/><circle cx="9" cy="11" r="1.4" fill="currentColor" stroke="none"/><circle cx="13" cy="15" r="1.4" fill="currentColor" stroke="none"/>
+      </svg>
+    </div>
+    <div class="title">
+      <h1>Métré Terrain</h1>
+      <p>Photo → m² · périmètre · m³ · tonnes</p>
+    </div>
+    <button class="theme-btn" id="themeBtn" title="Thème clair / sombre" aria-label="Changer le thème">
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    </button>
+  </header>
+
+  <div class="steps" id="steps">
+    <button class="step" data-step="0"><span class="n">1</span>Photo</button>
+    <button class="step" data-step="1"><span class="n">2</span>Échelle</button>
+    <button class="step" data-step="2"><span class="n">3</span>Tracé</button>
+    <button class="step" data-step="3"><span class="n">4</span>Volume</button>
+  </div>
+
+  <div class="stage empty" id="stage">
+    <span class="ph-badge" id="phBadge">Exemple</span>
+    <div class="placeholder" id="placeholder">
+      <svg viewBox="0 0 320 190" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect x="0" y="0" width="320" height="190" rx="10" fill="var(--surface-3)"/>
+        <path d="M8 150 L120 60 L312 96 L210 182 Z" fill="color-mix(in srgb,var(--accent) 14%,transparent)" stroke="var(--point)" stroke-width="2.4" stroke-dasharray="7 6"/>
+        <g fill="var(--point)">
+          <rect x="4" y="146" width="9" height="9" rx="2"/><rect x="116" y="56" width="9" height="9" rx="2"/>
+          <rect x="308" y="92" width="9" height="9" rx="2"/><rect x="206" y="178" width="9" height="9" rx="2"/>
+        </g>
+        <g stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round">
+          <path d="M40 168 L92 168"/><path d="M40 164 L40 172"/><path d="M92 164 L92 172"/>
+        </g>
+        <text x="66" y="162" fill="var(--ink-2)" font-family="Barlow" font-size="11" font-weight="600" text-anchor="middle">1 m — repère</text>
+        <text x="150" y="128" fill="var(--accent)" font-family="Barlow Semi Condensed" font-weight="800" font-size="20" text-anchor="middle">24,6 m²</text>
+      </svg>
+      <p class="ph-txt">Prends une photo du sol avec un <b>repère de taille connue</b> dedans (règle, dalle, piquets), puis pointe les coins.</p>
+    </div>
+    <canvas id="c"></canvas>
+    <div class="stage-tools">
+      <button class="tbtn" id="undoBtn" title="Annuler le dernier point" aria-label="Annuler">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-1"/></svg>
+      </button>
+      <button class="tbtn" id="recenterBtn" title="Recentrer" aria-label="Recentrer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8V3h5M21 8V3h-5M3 16v5h5M21 16v5h-5"/></svg>
+      </button>
+      <button class="tbtn" id="clearBtn" title="Tout effacer" aria-label="Effacer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+      </button>
+    </div>
+    <div class="hint" id="hint"></div>
+    <div class="zoomtag" id="zoomtag">100 %</div>
+    <div id="loupe"><canvas id="loupeC" width="220" height="220"></canvas></div>
+  </div>
+
+  <!-- STEP 0 : PHOTO -->
+  <section class="panel" id="p0">
+    <h2>1 · La photo</h2>
+    <p class="lead">Prends la zone bien en face, avec un objet de taille connue posé <b>à plat au sol</b> dans le cadre.</p>
+    <input type="file" id="file" accept="image/*" capture="environment" class="hidden">
+    <button class="btn primary wide" id="shootBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      Prendre / choisir une photo
+    </button>
+    <div class="row grow">
+      <button class="btn sm ghost" id="exampleBtn">Revoir l'exemple</button>
+      <button class="btn sm" id="nextTo1">Étape suivante →</button>
+    </div>
+  </section>
+
+  <!-- STEP 1 : ECHELLE -->
+  <section class="panel hidden" id="p1">
+    <h2>2 · L'échelle <span class="tag" id="scaleState">non réglée</span></h2>
+    <p class="lead">Indique à l'appli une distance réelle sur la photo. C'est ce qui transforme les pixels en mètres.</p>
+    <div class="seg" id="scaleMode" role="tablist">
+      <button data-m="rect" class="on">Rectangle (photo en biais)</button>
+      <button data-m="seg">Segment (vue du dessus)</button>
+    </div>
+    <p class="lead" id="scaleHow"></p>
+    <div id="rectFields">
+      <div class="row grow">
+        <div class="field"><label for="rectL">Largeur repère (m)</label><input type="number" id="rectL" inputmode="decimal" step="0.01" min="0" value="1"></div>
+        <div class="field"><label for="rectW">Longueur repère (m)</label><input type="number" id="rectW" inputmode="decimal" step="0.01" min="0" value="0.6"></div>
+      </div>
+    </div>
+    <div id="segFields" class="hidden">
+      <div class="field"><label for="segLen">Longueur du repère (m)</label><input type="number" id="segLen" inputmode="decimal" step="0.01" min="0" value="1"></div>
+    </div>
+    <button class="btn point wide" id="calibBtn"></button>
+  </section>
+
+  <!-- STEP 2 : TRACE -->
+  <section class="panel hidden" id="p2">
+    <h2>3 · Le tracé <span class="tag" id="ptCount">0 point</span></h2>
+    <p class="lead">Pointe chaque coin de la zone à mesurer, en tournant. Touche un point pour le déplacer, la loupe t'aide à viser.</p>
+    <div class="tiles">
+      <div class="tile hero"><span class="k">Surface</span><span class="v" id="liveArea">—</span><span class="u">m²</span></div>
+      <div class="tile"><span class="k">Périmètre</span><span class="v" id="livePerim">—</span><span class="u">m</span></div>
+    </div>
+    <div class="row grow">
+      <button class="btn sm" id="undoPt2">↶ Dernier point</button>
+      <button class="btn sm danger" id="clearPoly2">Vider le tracé</button>
+    </div>
+    <button class="btn primary wide" id="toVolume">Calculer le volume →</button>
+  </section>
+
+  <!-- STEP 3 : VOLUME -->
+  <section class="panel hidden" id="p3">
+    <h2>4 · Volume & matière</h2>
+    <div class="row grow">
+      <div class="field">
+        <label for="thick">Épaisseur / profondeur</label>
+        <div class="inrow">
+          <input type="number" id="thick" inputmode="decimal" step="1" min="0" value="15">
+          <div class="unit-pick" id="thickUnit"><button data-u="cm" class="on">cm</button><button data-u="m">m</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <label for="mat">Matériau (densité t/m³)</label>
+      <select id="mat"></select>
+    </div>
+    <div class="field" id="customDensWrap" class="hidden">
+      <label for="customDens">Densité personnalisée (t/m³)</label>
+      <input type="number" id="customDens" inputmode="decimal" step="0.05" min="0" value="1.5">
+    </div>
+
+    <div class="tiles">
+      <div class="tile"><span class="k">Surface</span><span class="v" id="rArea">—</span><span class="u">m²</span></div>
+      <div class="tile hero"><span class="k">Volume</span><span class="v" id="rVol">—</span><span class="u">m³</span></div>
+      <div class="tile"><span class="k">À commander</span><span class="v" id="rTon">—</span><span class="u">tonnes</span></div>
+      <div class="tile"><span class="k">Big-bags 1 t</span><span class="v" id="rBag">—</span><span class="u">sacs (arrondi)</span></div>
+    </div>
+    <button class="btn primary wide" id="addShape">＋ Ajouter cette zone au métré</button>
+    <button class="btn ghost sm wide" id="newShape">Nouvelle zone (même échelle)</button>
+  </section>
+
+  <!-- METRE / LISTE -->
+  <section class="panel" id="pList">
+    <h2>Métré <span class="tag" id="listCount"></span></h2>
+    <div class="shapes" id="shapes"></div>
+    <div class="totals" id="totals"></div>
+  </section>
+
+  <details class="help">
+    <summary>Comment mesurer juste <span class="chev">›</span></summary>
+    <div class="help-body">
+      <ol>
+        <li><b>Le repère fait tout.</b> Pose un objet dont tu connais les dimensions (règle maçon 1 m, une dalle 60×60, 4 piquets mesurés) bien <b>à plat</b>, dans le même plan que la zone.</li>
+        <li><b>Photo en biais</b> depuis le sol → mode <b>Rectangle</b> (4 coins) : ça redresse la perspective. <b>Photo du dessus</b> (bras levé, muret, drone) → mode <b>Segment</b> suffit.</li>
+        <li><b>Calibre puis vérifie</b> : mesure un truc connu, si l'appli tombe juste tu peux lui faire confiance sur le reste.</li>
+        <li><b>Volume</b> = surface × épaisseur. Décaissement, dalle béton, lit de gravier : entre l'épaisseur, le m³ et les tonnes sortent seuls.</li>
+      </ol>
+      <div class="warn">⚠️ Estimation de chantier pour chiffrer un devis — <b>pas un bornage de géomètre</b>. Sol supposé plan. Le tas en vrac irrégulier n'est pas mesurable sur une simple photo.</div>
+    </div>
+  </details>
+
+  <p class="foot">Métré Terrain — outil hors-ligne, aucune donnée envoyée. Densités indicatives (produit sec/humide, foisonnement) : ajuste selon ton fournisseur.</p>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const $=id=>document.getElementById(id);
+  const stage=$("stage"), canvas=$("c"), ctx=canvas.getContext("2d");
+  const loupe=$("loupe"), loupeC=$("loupeC"), lctx=loupeC.getContext("2d");
+
+  const MATERIALS=[
+    ["Terre végétale",1.4],["Grave / concassé 0/31.5",1.6],["Gravier / gravillon",1.5],
+    ["Sable",1.5],["Tout-venant compacté",1.9],["Béton",2.4],["Mélange à béton",1.8],
+    ["Enrobé / bitume",2.4],["Écorce / paillage",0.35],["Personnalisée…",-1]
+  ];
+
+  const S={
+    step:0, example:true,
+    img:null, natW:0, natH:0,
+    view:{scale:1, tx:0, ty:0}, base:1,
+    scaleMode:"rect",
+    calib:[],           // image-px points for calibration
+    poly:[],            // image-px polygon vertices
+    scale:null,         // {type:'seg',mpp} or {type:'rect',H}
+    thickUnit:"cm", matIndex:1,
+    shapes:[]
+  };
+
+  /* ---------- geometry ---------- */
+  function dist(a,b){return Math.hypot(a[0]-b[0],a[1]-b[1]);}
+  function solve(A,b){ // Gauss-Jordan, n up to 8
+    const n=b.length, M=A.map((r,i)=>r.concat(b[i]));
+    for(let col=0;col<n;col++){
+      let piv=col; for(let r=col+1;r<n;r++) if(Math.abs(M[r][col])>Math.abs(M[piv][col])) piv=r;
+      if(Math.abs(M[piv][col])<1e-12) return null;
+      [M[col],M[piv]]=[M[piv],M[col]];
+      const d=M[col][col]; for(let k=col;k<=n;k++) M[col][k]/=d;
+      for(let r=0;r<n;r++){ if(r===col) continue; const f=M[r][col]; if(!f) continue; for(let k=col;k<=n;k++) M[r][k]-=f*M[col][k]; }
+    }
+    return M.map(r=>r[n]);
+  }
+  function homography(src,dst){ // src px[4] -> dst metric[4]
+    const A=[],b=[];
+    for(let i=0;i<4;i++){
+      const [x,y]=src[i],[u,v]=dst[i];
+      A.push([x,y,1,0,0,0,-u*x,-u*y]); b.push(u);
+      A.push([0,0,0,x,y,1,-v*x,-v*y]); b.push(v);
+    }
+    const h=solve(A,b); if(!h) return null; h.push(1); return h;
+  }
+  function applyH(H,p){
+    const x=p[0],y=p[1];
+    const w=H[6]*x+H[7]*y+H[8];
+    return [(H[0]*x+H[1]*y+H[2])/w,(H[3]*x+H[4]*y+H[5])/w];
+  }
+  function toMetric(p){
+    if(!S.scale) return null;
+    if(S.scale.type==="seg") return [p[0]*S.scale.mpp,p[1]*S.scale.mpp];
+    return applyH(S.scale.H,p);
+  }
+  function polyMetrics(){
+    if(!S.scale||S.poly.length<2) return {area:0,perim:0};
+    const m=S.poly.map(toMetric);
+    let per=0; for(let i=0;i<m.length-1;i++) per+=dist(m[i],m[i+1]);
+    let area=0;
+    if(m.length>=3){ per+=dist(m[m.length-1],m[0]);
+      for(let i=0;i<m.length;i++){const a=m[i],b=m[(i+1)%m.length]; area+=a[0]*b[1]-b[0]*a[1];}
+      area=Math.abs(area)/2;
+    }
+    return {area,perim:per};
+  }
+
+  /* ---------- canvas transforms ---------- */
+  function fitView(){
+    if(!S.img) return;
+    const r=stage.getBoundingClientRect();
+    S.base=Math.min(r.width/S.natW, r.height/S.natH);
+    S.view.scale=1;
+    S.view.tx=(r.width - S.natW*S.base)/2;
+    S.view.ty=(r.height - S.natH*S.base)/2;
+    draw();
+  }
+  function img2css(p){const k=S.base*S.view.scale;return [p[0]*k+S.view.tx,p[1]*k+S.view.ty];}
+  function css2img(x,y){const k=S.base*S.view.scale;return [(x-S.view.tx)/k,(y-S.view.ty)/k];}
+
+  function resizeCanvas(){
+    const r=stage.getBoundingClientRect(), dpr=Math.min(window.devicePixelRatio||1,2.5);
+    canvas.width=Math.round(r.width*dpr); canvas.height=Math.round(r.height*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    if(S.img) draw();
+  }
+
+  function draw(){
+    const r=stage.getBoundingClientRect();
+    ctx.clearRect(0,0,r.width,r.height);
+    if(!S.img) return;
+    const k=S.base*S.view.scale;
+    ctx.imageSmoothingQuality="high";
+    ctx.drawImage(S.img,0,0,S.natW,S.natH,S.view.tx,S.view.ty,S.natW*k,S.natH*k);
+
+    const acc=css("--accent"), pt=css("--point"), ink=css("--ink");
+    // calibration
+    if(S.calib.length){
+      const cs=S.calib.map(img2css);
+      ctx.lineWidth=2.4; ctx.strokeStyle=pt; ctx.setLineDash([7,6]);
+      ctx.beginPath();
+      cs.forEach((p,i)=> i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));
+      if(S.scaleMode==="rect"&&cs.length===4) ctx.closePath();
+      ctx.stroke(); ctx.setLineDash([]);
+      cs.forEach((p,i)=>marker(p,pt,String(i+1)));
+    }
+    // polygon
+    if(S.poly.length){
+      const cs=S.poly.map(img2css);
+      if(cs.length>=2){
+        ctx.lineWidth=2.6; ctx.strokeStyle=pt;
+        ctx.beginPath(); cs.forEach((p,i)=> i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));
+        if(cs.length>=3){ ctx.closePath(); ctx.fillStyle=hexA(acc,.22); ctx.fill(); }
+        ctx.stroke();
+      }
+      cs.forEach((p,i)=>marker(p,pt));
+      if(cs.length>=3&&S.scale){
+        const c=centroid(cs), m=polyMetrics();
+        label(c[0],c[1],fmt(m.area,1)+" m²",acc);
+      }
+    }
+  }
+  function marker(p,color,txt){
+    ctx.beginPath(); ctx.arc(p[0],p[1],7,0,7); ctx.fillStyle="#fff"; ctx.fill();
+    ctx.beginPath(); ctx.arc(p[0],p[1],5.4,0,7); ctx.fillStyle=color; ctx.fill();
+    if(txt){ctx.fillStyle="#fff";ctx.font="700 10px Barlow Semi Condensed, sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(txt,p[0],p[1]);}
+  }
+  function label(x,y,t,bg){
+    ctx.font="800 15px Barlow Semi Condensed, sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    const w=ctx.measureText(t).width+16;
+    ctx.fillStyle=bg; roundRect(x-w/2,y-13,w,26,7); ctx.fill();
+    ctx.fillStyle="#fff"; ctx.fillText(t,x,y);
+  }
+  function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+  function centroid(cs){let x=0,y=0;cs.forEach(p=>{x+=p[0];y+=p[1];});return [x/cs.length,y/cs.length];}
+  function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()||"#888";}
+  function hexA(h,a){h=h.replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h,16);return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;}
+
+  /* ---------- loupe ---------- */
+  function showLoupe(imgP){
+    loupe.classList.add("on");
+    const L=220, srcR=46, z=L/(srcR*2);
+    lctx.clearRect(0,0,L,L);
+    lctx.fillStyle=css("--surface-3"); lctx.fillRect(0,0,L,L);
+    lctx.save();
+    lctx.drawImage(S.img, imgP[0]-srcR, imgP[1]-srcR, srcR*2, srcR*2, 0,0,L,L);
+    lctx.restore();
+    lctx.strokeStyle=css("--point"); lctx.lineWidth=2.5;
+    lctx.beginPath(); lctx.moveTo(L/2-16,L/2); lctx.lineTo(L/2+16,L/2); lctx.moveTo(L/2,L/2-16); lctx.lineTo(L/2,L/2+16); lctx.stroke();
+    lctx.beginPath(); lctx.arc(L/2,L/2,7,0,7); lctx.stroke();
+    void z;
+  }
+  function hideLoupe(){loupe.classList.remove("on");}
+
+  /* ---------- pointer interaction ---------- */
+  const ptrs=new Map(); let mode=null, activePt=-1, activeSet=null, startCss=null, moved=0, pinch=null;
+  const HIT=20;
+
+  function localXY(e){const r=canvas.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top];}
+  function currentSet(){ // which points does a tap affect
+    if(S.step===1){ const need=S.scaleMode==="rect"?4:2; return {arr:S.calib,max:need}; }
+    if(S.step===2){ return {arr:S.poly,max:999}; }
+    return null;
+  }
+  function hitTest(cx,cy){
+    const sets=[{a:S.poly},{a:S.calib}];
+    for(const s of sets){for(let i=0;i<s.a.length;i++){const c=img2css(s.a[i]);if(Math.hypot(c[0]-cx,c[1]-cy)<HIT)return {arr:s.a,i};}}
+    return null;
+  }
+
+  canvas.addEventListener("pointerdown",e=>{
+    if(!S.img) return;
+    canvas.setPointerCapture(e.pointerId);
+    ptrs.set(e.pointerId,localXY(e));
+    if(ptrs.size===2){
+      mode="pinch"; hideLoupe();
+      const p=[...ptrs.values()]; pinch={d:Math.hypot(p[0][0]-p[1][0],p[0][1]-p[1][1]),
+        mid:[(p[0][0]+p[1][0])/2,(p[0][1]+p[1][1])/2], scale:S.view.scale, tx:S.view.tx, ty:S.view.ty};
+      return;
+    }
+    const [cx,cy]=localXY(e); startCss=[cx,cy]; moved=0;
+    const hit=hitTest(cx,cy);
+    if(hit){ mode="drag"; activeSet=hit.arr; activePt=hit.i; showLoupe(activeSet[activePt]); draw(); }
+    else { mode="maybe"; }
+  });
+
+  canvas.addEventListener("pointermove",e=>{
+    if(!ptrs.has(e.pointerId)) return;
+    const xy=localXY(e); ptrs.set(e.pointerId,xy);
+    if(mode==="pinch"&&ptrs.size>=2){
+      const p=[...ptrs.values()]; const d=Math.hypot(p[0][0]-p[1][0],p[0][1]-p[1][1]);
+      const mid=[(p[0][0]+p[1][0])/2,(p[0][1]+p[1][1])/2];
+      let ns=Math.max(1,Math.min(8, pinch.scale*(d/pinch.d)));
+      // zoom around pinch midpoint (image point under midpoint stays put)
+      const imgAtMid=[(pinch.mid[0]-pinch.tx)/(S.base*pinch.scale),(pinch.mid[1]-pinch.ty)/(S.base*pinch.scale)];
+      S.view.scale=ns;
+      S.view.tx=mid[0]-imgAtMid[0]*S.base*ns;
+      S.view.ty=mid[1]-imgAtMid[1]*S.base*ns;
+      updZoom(); draw(); return;
+    }
+    const [cx,cy]=xy;
+    if(mode==="drag"){
+      const ip=css2img(cx,cy); ip[0]=Math.max(0,Math.min(S.natW,ip[0])); ip[1]=Math.max(0,Math.min(S.natH,ip[1]));
+      activeSet[activePt]=ip; showLoupe(ip); draw(); refreshLive(); return;
+    }
+    if(mode==="maybe"){
+      moved=Math.hypot(cx-startCss[0],cy-startCss[1]);
+      if(moved>10){ mode="pan"; }
+    }
+    if(mode==="pan"){
+      // pan using this pointer delta
+      const prev=startCss; S.view.tx+=cx-prev[0]; S.view.ty+=cy-prev[1]; startCss=[cx,cy]; draw();
+    }
+  });
+
+  function endPtr(e){
+    if(!ptrs.has(e.pointerId)) return;
+    const wasMode=mode;
+    ptrs.delete(e.pointerId);
+    if(wasMode==="maybe"&&moved<=10){ placeTap(startCss); }
+    if(ptrs.size<2 && wasMode==="pinch"){ mode=null; }
+    if(ptrs.size===0){ mode=null; activePt=-1; activeSet=null; hideLoupe(); draw(); }
+    else { if(mode!=="pinch"){ mode=null; } }
+  }
+  canvas.addEventListener("pointerup",endPtr);
+  canvas.addEventListener("pointercancel",endPtr);
+
+  function placeTap(cssPt){
+    const set=currentSet(); if(!set) return;
+    const ip=css2img(cssPt[0],cssPt[1]);
+    if(ip[0]<0||ip[1]<0||ip[0]>S.natW||ip[1]>S.natH) return;
+    if(set.arr.length>=set.max){ // replace nearest instead of adding beyond max (calibration)
+      let best=0,bd=1e9; set.arr.forEach((p,i)=>{const c=img2css(p),d=Math.hypot(c[0]-cssPt[0],c[1]-cssPt[1]);if(d<bd){bd=d;best=i;}});
+      set.arr[best]=ip;
+    } else set.arr.push(ip);
+    if(S.step===1) autoCalib();
+    draw(); refreshLive(); renderStepUI();
+  }
+
+  /* ---------- calibration ---------- */
+  function autoCalib(){
+    const need=S.scaleMode==="rect"?4:2;
+    if(S.calib.length<need){ S.scale=null; return; }
+    if(S.scaleMode==="seg"){
+      const L=parseFloat($("segLen").value)||0; const dpx=dist(S.calib[0],S.calib[1]);
+      S.scale=(L>0&&dpx>0)?{type:"seg",mpp:L/dpx}:null;
+    }else{
+      const L=parseFloat($("rectL").value)||0, W=parseFloat($("rectW").value)||0;
+      if(L>0&&W>0){ const H=homography(S.calib,[[0,0],[L,0],[L,W],[0,W]]); S.scale=H?{type:"rect",H}:null; }
+      else S.scale=null;
+    }
+    updScaleState();
+  }
+  function updScaleState(){
+    const ok=!!S.scale;
+    $("scaleState").textContent=ok?"réglée ✓":"non réglée";
+    $("scaleState").style.color=ok?"var(--good)":"var(--ink-2)";
+    markStep(1,ok);
+  }
+
+  /* ---------- UI wiring ---------- */
+  function setStep(n){
+    S.step=n;
+    [...$("steps").children].forEach(el=>{
+      const s=+el.dataset.step; el.classList.toggle("on",s===n);
+    });
+    ["p0","p1","p2","p3"].forEach((id,i)=>$(id).classList.toggle("hidden",i!==n));
+    updHint(); renderStepUI(); draw();
+  }
+  function markStep(n,done){ const el=[...$("steps").children][n]; if(el) el.classList.toggle("done",!!done); }
+
+  function updHint(){
+    const h=$("hint");
+    if(S.example){ h.textContent="Exemple — appuie sur « Prendre une photo » pour démarrer ton métré."; return; }
+    if(!S.img){ h.textContent=""; return; }
+    if(S.step===1){ h.textContent = S.scaleMode==="rect"?"Pointe les 4 coins du repère rectangulaire, en tournant.":"Pointe les 2 bouts de ton repère de longueur connue."; }
+    else if(S.step===2){ h.textContent="Pointe les coins de la zone. Glisse un point pour l'ajuster."; }
+    else if(S.step===3){ h.textContent="Règle l'épaisseur et la matière, puis ajoute la zone au métré."; }
+    else h.textContent="Pince pour zoomer · 2 doigts pour déplacer la photo.";
+  }
+
+  function renderStepUI(){
+    // step1 fields + button label
+    const need=S.scaleMode==="rect"?4:2;
+    $("rectFields").classList.toggle("hidden",S.scaleMode!=="rect");
+    $("segFields").classList.toggle("hidden",S.scaleMode!=="seg");
+    $("scaleHow").textContent = S.scaleMode==="rect"
+      ? "Sur la photo, pointe les 4 coins d'un rectangle réel (dalle, planche, cadre de piquets) dont tu tapes les dimensions ci-dessous."
+      : "Sur la photo, pointe les 2 extrémités d'un objet de longueur connue (règle, mètre déplié).";
+    const cb=$("calibBtn");
+    if(S.scale){ cb.textContent="Échelle OK ✓ — passer au tracé →"; cb.classList.remove("point"); cb.classList.add("primary"); }
+    else { cb.textContent=`Placer le repère (${S.calib.length}/${need})`; cb.classList.add("point"); cb.classList.remove("primary"); }
+    // step2 counts
+    $("ptCount").textContent=S.poly.length+(S.poly.length>1?" points":" point");
+    // step3 material select
+    refreshLive();
+  }
+
+  function refreshLive(){
+    const m=polyMetrics();
+    $("liveArea").textContent = S.scale&&S.poly.length>=3?fmt(m.area,2):"—";
+    $("livePerim").textContent = S.scale&&S.poly.length>=2?fmt(m.perim,2):"—";
+    // volume panel
+    const th=thickM(), dens=density();
+    const vol=m.area*th;
+    $("rArea").textContent = m.area?fmt(m.area,2):"—";
+    $("rVol").textContent = (m.area&&th)?fmt(vol,2):"—";
+    $("rTon").textContent = (vol&&dens>0)?fmt(vol*dens,2):"—";
+    $("rBag").textContent = (vol&&dens>0)?Math.ceil(vol*dens):"—";
+    renderList();
+  }
+  function thickM(){ const v=parseFloat($("thick").value)||0; return S.thickUnit==="cm"?v/100:v; }
+  function density(){ const m=MATERIALS[S.matIndex]; return m[1]===-1?(parseFloat($("customDens").value)||0):m[1]; }
+
+  function renderList(){
+    const box=$("shapes"); box.innerHTML="";
+    let A=0,V=0,T=0;
+    S.shapes.forEach((s,i)=>{
+      A+=s.area; V+=s.vol; T+=s.ton;
+      const row=document.createElement("div"); row.className="shape-row";
+      row.innerHTML=`<span class="dot"></span><span class="nm">${s.name}</span>
+        <span class="mt"><b>${fmt(s.area,1)}</b> m² · <b>${fmt(s.vol,2)}</b> m³ · <b>${fmt(s.ton,2)}</b> t</span>`;
+      const x=document.createElement("button"); x.className="x"; x.textContent="✕"; x.setAttribute("aria-label","Retirer");
+      x.onclick=()=>{S.shapes.splice(i,1);refreshLive();};
+      row.appendChild(x); box.appendChild(row);
+    });
+    if(!S.shapes.length){ box.innerHTML=`<div style="color:var(--ink-2);font-size:13px;padding:6px 2px">Aucune zone enregistrée. Trace une zone puis « Ajouter au métré ».</div>`; }
+    $("listCount").textContent=S.shapes.length?`${S.shapes.length} zone${S.shapes.length>1?"s":""}`:"";
+    $("totals").innerHTML=`
+      <div class="t"><span>Surface totale</span><b>${fmt(A,1)} m²</b></div>
+      <div class="t"><span>Volume total</span><b>${fmt(V,2)} m³</b></div>
+      <div class="t"><span>À commander</span><b>${fmt(T,2)} t</b></div>`;
+  }
+
+  function fmt(n,d){ if(!isFinite(n))return "—"; return n.toLocaleString("fr-FR",{minimumFractionDigits:d,maximumFractionDigits:d}); }
+
+  /* ---------- image load ---------- */
+  function loadFile(f){
+    const url=URL.createObjectURL(f), im=new Image();
+    im.onload=()=>{
+      S.img=im; S.natW=im.naturalWidth; S.natH=im.naturalHeight;
+      S.example=false; S.calib=[]; S.poly=[]; S.scale=null;
+      $("phBadge").classList.add("hidden");
+      stage.classList.remove("empty");
+      resizeCanvas(); fitView(); setStep(1);
+      URL.revokeObjectURL(url);
+    };
+    im.src=url;
+  }
+
+  function loadExample(){
+    S.example=true; S.img=null; stage.classList.add("empty");
+    $("phBadge").classList.remove("hidden");
+    S.shapes=[{name:"Terrasse (exemple)",area:24.6,vol:3.69,ton:5.9}];
+    markStep(1,false);markStep(2,false);markStep(3,false);
+    setStep(0); renderList(); updHint();
+  }
+
+  function resetAll(){
+    S.calib=[]; S.poly=[]; S.scale=null;
+    markStep(1,false);markStep(2,false);
+    updScaleState(); draw(); refreshLive(); renderStepUI();
+  }
+
+  /* ---------- events ---------- */
+  $("shootBtn").onclick=()=>$("file").click();
+  $("file").addEventListener("change",e=>{ if(e.target.files&&e.target.files[0]) loadFile(e.target.files[0]); });
+  $("exampleBtn").onclick=loadExample;
+  $("nextTo1").onclick=()=>{ if(!S.img){ $("file").click(); } else setStep(1); };
+
+  $("scaleMode").addEventListener("click",e=>{
+    const b=e.target.closest("button"); if(!b) return;
+    [...e.currentTarget.children].forEach(x=>x.classList.toggle("on",x===b));
+    S.scaleMode=b.dataset.m; S.calib=[]; S.scale=null; autoCalib(); draw(); renderStepUI(); updHint();
+  });
+  ["rectL","rectW","segLen"].forEach(id=>$(id).addEventListener("input",()=>{autoCalib();draw();renderStepUI();}));
+  $("calibBtn").onclick=()=>{ if(S.scale) setStep(2); };
+
+  $("undoPt2").onclick=()=>{S.poly.pop();draw();refreshLive();renderStepUI();};
+  $("clearPoly2").onclick=()=>{S.poly=[];markStep(2,false);draw();refreshLive();renderStepUI();};
+  $("toVolume").onclick=()=>{ if(S.poly.length>=3){ markStep(2,true); setStep(3);} else $("hint").textContent="Pointe au moins 3 coins pour fermer la zone."; };
+
+  $("thick").addEventListener("input",refreshLive);
+  $("thickUnit").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+    [...e.currentTarget.children].forEach(x=>x.classList.toggle("on",x===b));S.thickUnit=b.dataset.u;refreshLive();});
+  const matSel=$("mat");
+  MATERIALS.forEach((m,i)=>{const o=document.createElement("option");o.value=i;o.textContent=m[1]===-1?m[0]:`${m[0]} — ${m[1].toLocaleString("fr-FR")}`;matSel.appendChild(o);});
+  matSel.value=String(S.matIndex);
+  matSel.addEventListener("change",()=>{S.matIndex=+matSel.value;
+    $("customDensWrap").classList.toggle("hidden",MATERIALS[S.matIndex][1]!==-1);refreshLive();saveCfg();});
+  $("customDens").addEventListener("input",refreshLive);
+
+  $("addShape").onclick=()=>{
+    const m=polyMetrics(); if(m.area<=0||!S.scale) return;
+    const th=thickM(),d=density(),vol=m.area*th;
+    S.shapes.push({name:`Zone ${S.shapes.length+1}`,area:m.area,perim:m.perim,vol,ton:vol*d});
+    S.poly=[]; markStep(2,false); setStep(2); draw(); refreshLive();
+    $("hint").textContent="Zone enregistrée ✓ — trace la suivante ou consulte le métré en bas.";
+  };
+  $("newShape").onclick=()=>{S.poly=[];markStep(2,false);setStep(2);draw();refreshLive();};
+
+  $("undoBtn").onclick=()=>{ const set=S.step===1?S.calib:S.poly; set.pop(); if(S.step===1)autoCalib(); draw();refreshLive();renderStepUI(); };
+  $("clearBtn").onclick=resetAll;
+  $("recenterBtn").onclick=fitView;
+
+  [...$("steps").children].forEach(el=>el.addEventListener("click",()=>{
+    const n=+el.dataset.step; if(n>0&&!S.img&&S.example){ return; } setStep(n);
+  }));
+
+  function updZoom(){ $("zoomtag").textContent=Math.round(S.view.scale*100)+" %"; }
+
+  // theme toggle
+  let theme=null;
+  $("themeBtn").onclick=()=>{ const cur=document.documentElement.getAttribute("data-theme");
+    theme = cur==="dark"?"light":(cur==="light"?"dark":(matchMedia("(prefers-color-scheme:dark)").matches?"light":"dark"));
+    document.documentElement.setAttribute("data-theme",theme); draw(); };
+
+  // config persist
+  function saveCfg(){ try{ localStorage.setItem("mt_cfg",JSON.stringify({mat:S.matIndex,u:S.thickUnit})); }catch(e){} }
+  function loadCfg(){ try{ const c=JSON.parse(localStorage.getItem("mt_cfg")||"{}");
+    if(c.mat!=null){S.matIndex=c.mat;matSel.value=String(c.mat);$("customDensWrap").classList.toggle("hidden",MATERIALS[c.mat]&&MATERIALS[c.mat][1]!==-1);}
+    if(c.u){S.thickUnit=c.u;[...$("thickUnit").children].forEach(x=>x.classList.toggle("on",x.dataset.u===c.u));}
+  }catch(e){} }
+
+  window.addEventListener("resize",()=>{ resizeCanvas(); if(S.img&&S.view.scale===1) fitView(); });
+
+  // init
+  loadCfg();
+  resizeCanvas();
+  loadExample();
+  updZoom();
+})();
+</script>
+
+</body></html>
