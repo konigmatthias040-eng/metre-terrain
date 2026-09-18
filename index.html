@@ -268,17 +268,17 @@
 
   <!-- STEP 1 : ECHELLE -->
   <section class="panel hidden" id="p1">
-    <h2>2 · L'échelle <span class="tag" id="scaleState">non réglée</span></h2>
-    <p class="lead">Indique à l'appli une distance réelle sur la photo. C'est ce qui transforme les pixels en mètres.</p>
-    <div class="seg" id="scaleMode" role="tablist">
-      <button data-m="rect" class="on">Rectangle (photo en biais)</button>
-      <button data-m="seg">Segment (vue du dessus)</button>
+    <h2>2 · Ton repère connu <span class="tag" id="scaleState">non réglée</span></h2>
+    <p class="lead">Prends un <b>rectangle que tu connais</b> sur la photo (ta <b>dalle de soubassement</b>, une plaque, une palette). Touche ses <b>4 coins</b> puis tape sa <b>longueur</b> et sa <b>largeur</b>. Ça redresse la perspective de ta photo normale et donne l'échelle juste de tout le terrain.</p>
+    <div class="seg hidden" id="scaleMode" role="tablist">
+      <button data-m="rect" class="on">Rectangle</button>
+      <button data-m="seg">Segment</button>
     </div>
     <p class="lead" id="scaleHow"></p>
     <div id="rectFields">
       <div class="row grow">
-        <div class="field"><label for="rectL">Largeur repère (m)</label><input type="number" id="rectL" inputmode="decimal" step="0.01" min="0" value="1"></div>
-        <div class="field"><label for="rectW">Longueur repère (m)</label><input type="number" id="rectW" inputmode="decimal" step="0.01" min="0" value="0.6"></div>
+        <div class="field"><label for="rectL">Longueur de la dalle (m)</label><input type="number" id="rectL" inputmode="decimal" step="0.01" min="0" value="1"></div>
+        <div class="field"><label for="rectW">Largeur de la dalle (m)</label><input type="number" id="rectW" inputmode="decimal" step="0.01" min="0" value="0.6"></div>
       </div>
     </div>
     <div id="segFields" class="hidden">
@@ -645,11 +645,11 @@
     $("rectFields").classList.toggle("hidden",S.scaleMode!=="rect");
     $("segFields").classList.toggle("hidden",S.scaleMode!=="seg");
     $("scaleHow").textContent = S.scaleMode==="rect"
-      ? "Sur la photo, pointe les 4 coins d'un rectangle réel (dalle, planche, cadre de piquets) dont tu tapes les dimensions ci-dessous."
-      : "Sur la photo, pointe les 2 extrémités d'un objet de longueur connue (règle, mètre déplié).";
+      ? "Touche les 4 coins de ta dalle sur la photo, dans l'ordre en tournant (pas en diagonale). Puis tape sa longueur et sa largeur juste en dessous."
+      : "Touche les 2 bouts d'un objet dont tu connais la longueur (ta règle, un mètre déplié).";
     const cb=$("calibBtn");
-    if(S.scale){ cb.textContent="Échelle OK ✓ — passer au tracé →"; cb.classList.remove("point"); cb.classList.add("primary"); }
-    else { cb.textContent=`Placer le repère (${S.calib.length}/${need})`; cb.classList.add("point"); cb.classList.remove("primary"); }
+    if(S.scale){ cb.textContent="Repère OK ✓ — passer au tracé →"; cb.classList.remove("point"); cb.classList.add("primary"); }
+    else { cb.textContent = S.scaleMode==="rect"?`Toucher les coins de la dalle (${S.calib.length}/4)`:`Placer le repère (${S.calib.length}/${need})`; cb.classList.add("point"); cb.classList.remove("primary"); }
     // step2 counts
     $("ptCount").textContent=S.poly.length+(S.poly.length>1?" points":" point");
     // step3 material select
