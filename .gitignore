@@ -1,0 +1,10 @@
+# Le depot sert le site GitHub Pages : on ne publie QUE index.html.
+# Les artefacts PC (exe, icone, readme) restent en local.
+MetreTerrain.exe
+app.ico
+LISEZ-MOI.txt
+
+# Cruft Windows
+Thumbs.db
+desktop.ini
+*:Zone.Identifier
