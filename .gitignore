@@ -1,6 +1,7 @@
 # Le depot sert le site GitHub Pages : on ne publie QUE index.html.
 # Les artefacts PC (exe, icone, readme) restent en local.
 MetreTerrain.exe
+Metre-Terrain-Setup.exe
 app.ico
 LISEZ-MOI.txt
 
